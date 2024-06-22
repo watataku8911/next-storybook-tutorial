@@ -1,36 +1,148 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## storybook の導入
 
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```console
+$ npx storybook init
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+実行後、ルートディレクトリに`.storybook`ディレクトリ、`src/stories`ディレクトリとその中にサンプルファイルが自動的に生成され、`package.json`ファイルもnpmコマンドなどが追記されていると思います。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```console
+$ npm run storybook
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+storybookを立ち上げるコマンド。
 
-## Learn More
+## 基本的なstoryの書き方
 
-To learn more about Next.js, take a look at the following resources:
+`.storybook/.main.ts`ファイルがStorybookの設定ファイルです。そこに以下のパスを追加します
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```ts
+import type { StorybookConfig } from "@storybook/nextjs";
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+const config: StorybookConfig = {
+  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  addons: [
+    "@storybook/addon-onboarding",
+    "@storybook/addon-links",
+    "@storybook/addon-essentials",
+    "@chromatic-com/storybook",
+    "@storybook/addon-interactions",
+    "@/components/**/*.stories.@(js|jsx|ts|tsx)", // 追加
+  ],
+  framework: {
+    name: "@storybook/nextjs",
+    options: {},
+  },
+  staticDirs: ["../public"],
+};
+export default config;
+```
 
-## Deploy on Vercel
+デフォルトでは`stories`ディレクトリからストーリファイルを読み込む設定になっていますが、`components`ディレクトリからストリーファイルを読み込むように設定したいから追加した
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## コンポーネントをカタログに登録する
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+今回カタログに登録するコンポーネント
+
+```tsx
+// components/Circle/Circle.tsx
+
+import React from "react";
+
+type Props = {
+  variant: "green" | "yellow" | "orange";
+};
+
+const Circle = ({ variant = "orange" }: Props) => {
+  let bgColor;
+
+  switch (variant) {
+    case "orange":
+      bgColor = "bg-orange-500";
+      break;
+    case "yellow":
+      bgColor = "bg-yellow-500";
+      break;
+    case "green":
+      bgColor = "bg-green-500";
+      break;
+    default:
+      bgColor = "bg-orange-500";
+  }
+
+  return <div className={`${bgColor} w-14 h-14 p-2 rounded-full`}></div>;
+};
+
+export default Circle;
+```
+
+このコンポーネントをカタログに追加するために`components/Circle/Circle.stories.ts`ファイルを作成します。
+
+```ts
+// components/Circle/Circle.stories.ts
+
+import { Meta, StoryObj } from "@storybook/react";
+import Circle from "./Circle";
+
+const meta: Meta<typeof Circle> = {
+  component: Circle,
+  title: "Circle",
+
+  // variantの切り替え方法(デフォルトではラジオボタン)
+  argTypes: {
+    variant: {
+      control: "select",
+    },
+  },
+
+  // ドキュメントの追加
+  tags: ["autodocs"],
+};
+
+export default meta;
+
+// 実際にカタログに登録する
+type Story = StoryObj<typeof meta>;
+
+export const BaseCircle: Story = {
+  args: {
+    variant: "orange",
+  },
+};
+
+export const GreenCircle: Story = {
+  args: {
+    variant: "green",
+  },
+};
+
+export const YellowGreen: Story = {
+  args: {
+    variant: "yellow",
+  },
+};
+```
+
+完了です。
+
+しかしながらTailwindCSSを使っている場合は以下の設定を追加してください
+
+```ts
+// .storybook/preview.ts
+
+import type { Preview } from "@storybook/react";
+import "../src/app/globals.css"; // 追加
+
+const preview: Preview = {
+  parameters: {
+    controls: {
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i,
+      },
+    },
+  },
+};
+
+export default preview;
+```
